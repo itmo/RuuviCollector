@@ -118,7 +118,21 @@ public class RuuviMeasurement {
      * Density of air
      */
     public Double airDensity;
-
+    public Double[] getAsVector()
+    {
+        return new Double[]{
+                temperature,
+                humidity,
+                pressure,
+                accelerationX,
+                accelerationY,
+                accelerationZ
+            };
+    }
+    public static int getVectorLength()
+    {
+        return new RuuviMeasurement().getAsVector().length;
+    }
     @Override
     public String toString() {
         return "RuuviMeasurement{" + "time=" + time + ", name=" + name + ", mac=" + mac + ", dataFormat=" + dataFormat + ", temperature=" + temperature + ", humidity=" + humidity + ", pressure=" + pressure + ", accelerationX=" + accelerationX + ", accelerationY=" + accelerationY + ", accelerationZ=" + accelerationZ + ", batteryVoltage=" + batteryVoltage + ", txPower=" + txPower + ", movementCounter=" + movementCounter + ", measurementSequenceNumber=" + measurementSequenceNumber + ", tagID=" + tagID + ", rssi=" + rssi + ", accelerationTotal=" + accelerationTotal + ", accelerationAngleFromX=" + accelerationAngleFromX + ", accelerationAngleFromY=" + accelerationAngleFromY + ", accelerationAngleFromZ=" + accelerationAngleFromZ + ", absoluteHumidity=" + absoluteHumidity + ", dewPoint=" + dewPoint + ", equilibriumVaporPressure=" + equilibriumVaporPressure + ", airDensity=" + airDensity + '}';

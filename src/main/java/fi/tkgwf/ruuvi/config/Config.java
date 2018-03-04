@@ -36,7 +36,7 @@ public abstract class Config {
     private static final Map<String, String> TAG_NAMES = new HashMap<>();
     private static String[] scanCommand = {"hcitool", "lescan", "--duplicates", "--passive"};
     private static String[] dumpCommand = {"hcidump", "--raw"};
-
+    private static boolean measurementUpdateAdaptiveness=true;
     static {
         readConfig();
         readTagNames();
@@ -185,7 +185,9 @@ public abstract class Config {
     public static long getMeasurementUpdateLimit() {
         return measurementUpdateLimit;
     }
-
+    public static boolean getMeasurementUpdateAdaptiveness() {
+        return measurementUpdateAdaptiveness;
+    }
     public static boolean isAllowedMAC(String mac) {
         return filterMode.test(mac);
     }

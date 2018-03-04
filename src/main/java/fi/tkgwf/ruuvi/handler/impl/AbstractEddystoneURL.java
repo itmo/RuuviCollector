@@ -10,9 +10,10 @@ import java.util.Map;
 public abstract class AbstractEddystoneURL implements BeaconHandler {
 
     private static final String RUUVI_BASE_URL = "ruu.vi/#";
-    private final Map<String, Long> updatedMacs;
+    private final Map<String, Update> updatedMacs;
     private final long updateLimit = Config.getMeasurementUpdateLimit();
-
+    private final boolean adaptiveUpdates = Config.getMeasurementUpdateAdaptiveness();
+    private final Double fudge=0.5;
     public AbstractEddystoneURL() {
         updatedMacs = new HashMap<>();
     }
@@ -22,7 +23,7 @@ public abstract class AbstractEddystoneURL implements BeaconHandler {
     @Override
     public RuuviMeasurement handle(HCIData hciData) {
         HCIData.Report.AdvertisementData adData = hciData.findAdvertisementDataByType(0x16);
-        if (adData == null || !shouldUpdate(hciData.mac)) {
+        if (adData == null) {
             return null;
         }
         String hashPart = getRuuviUrlHashPart(adData.dataBytes());
@@ -56,6 +57,9 @@ public abstract class AbstractEddystoneURL implements BeaconHandler {
         int pressureHi = data[4] & 0xFF;
         int pressureLo = data[5] & 0xFF;
         measurement.pressure = (double) pressureHi * 256 + 50000 + pressureLo;
+        if( !shouldUpdate(measurement)) {
+            return null;
+        }
         return measurement;
     }
 
@@ -80,15 +84,70 @@ public abstract class AbstractEddystoneURL implements BeaconHandler {
         return new String(data, preLength, data.length - preLength);
     }
 
-    private boolean shouldUpdate(String mac) {
+    private boolean shouldUpdate(RuuviMeasurement measurement) {
+        String mac=measurement.mac;
         if (!Config.isAllowedMAC(mac)) {
             return false;
         }
-        Long lastUpdate = updatedMacs.get(mac);
-        if (lastUpdate == null || lastUpdate + updateLimit < System.currentTimeMillis()) {
-            updatedMacs.put(mac, System.currentTimeMillis());
+        Update lastUpdate = updatedMacs.get(mac);
+
+        if (lastUpdate == null || 
+            (adaptiveUpdates && lastUpdate.differs(measurement)) ||
+            lastUpdate.lastUpdate + updateLimit < System.currentTimeMillis()) 
+        {
+            Update update=Update.nextUpdate(lastUpdate,measurement);
+            updatedMacs.put(mac, update);
             return true;
         }
         return false;
     }
-}
+    /**
+     *  store context here for calculating predictions
+     */
+    static class Update
+    {   
+        static final int NMAX=200;
+        protected int n=0;
+        public Update()
+        {}
+        public Long lastUpdate;
+        public Long lastLastUpdate;
+        public Double[] jitter=new Double[RuuviMeasurement.getVectorLength()];
+        public Double[] last=new Double[RuuviMeasurement.getVectorLength()];
+        public Double[] lastLast=new Double[RuuviMeasurement.getVectorLength()];
+        public boolean differs(RuuviMeasurement measurement)
+        {
+            boolean differs=false;
+            long now=System.currentTimeMillis();
+            Double[] current=measurement.getAsVector();
+            Double[] predicted=new Double[current.length];
+            //refactor this into a stream operation?
+            for(int i=0;i<current.length;i++)
+            {   
+                predicted[i]=last[i]+(last[i]-lastLast[i])*(now-lastUpdate)/(lastUpdate-lastLastUpdate);
+                Double delta=Math.abs(current[i]-predicted[i]);
+                if(delta>Math.sqrt(jitter[i]))
+                    differs|=true;
+                jitter[i]=(jitter[i]*n+delta*delta)/(n+1);                
+            }            
+            if(n<NMAX)n++;
+            return differs;
+        }
+        public static Update nextUpdate(Update last,RuuviMeasurement measurement)
+        {
+            if(last==null)
+                last=new Update();
+            return last.nextUpdate(measurement);
+        }
+        public Update nextUpdate(RuuviMeasurement measurement)
+        {
+            Update ret=new Update();
+            long now=System.currentTimeMillis();
+            ret.lastLastUpdate=(last==null)?now:lastUpdate;
+            ret.lastLast=(last==null)?measurement.getAsVector():last;
+            ret.lastUpdate=now;
+            ret.last=measurement.getAsVector();
+            return ret;
+        }
+    }
+}   
