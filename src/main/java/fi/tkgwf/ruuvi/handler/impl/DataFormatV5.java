@@ -9,15 +9,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DataFormatV5 implements BeaconHandler {
+public class DataFormatV5 extends AbstractBeaconHandler implements BeaconHandler {
 
     private final int[] RUUVI_COPANY_IDENTIFIER = {0x99, 0x04}; // 0x0499
-    /**
-     * Contains the MAC address as key, and the timestamp of last sent update as
-     * value
-     */
-    private final Map<String, Long> updatedMacs;
-    private final long updateLimit = Config.getMeasurementUpdateLimit();
 
     public DataFormatV5() {
         updatedMacs = new HashMap<>();
@@ -26,7 +20,7 @@ public class DataFormatV5 implements BeaconHandler {
     @Override
     public RuuviMeasurement handle(HCIData hciData) {
         HCIData.Report.AdvertisementData adData = hciData.findAdvertisementDataByType(0xFF);
-        if (adData == null || !shouldUpdate(hciData.mac)) {
+        if (adData == null ) {
             return null;
         }
         byte[] data = adData.dataBytes();
@@ -78,19 +72,10 @@ public class DataFormatV5 implements BeaconHandler {
         if (!Utils.isMaxSignedShort(data[16], data[17])) {
             m.measurementSequenceNumber = (data[16] & 0xFF) << 8 | data[17] & 0xFF;
         }
-
+        if(!shouldUpdate(hciData.mac))
+        {
+            return null;
+        }
         return m;
-    }
-
-    private boolean shouldUpdate(String mac) {
-        if (!Config.isAllowedMAC(mac)) {
-            return false;
-        }
-        Long lastUpdate = updatedMacs.get(mac);
-        if (lastUpdate == null || lastUpdate + updateLimit < System.currentTimeMillis()) {
-            updatedMacs.put(mac, System.currentTimeMillis());
-            return true;
-        }
-        return false;
     }
 }

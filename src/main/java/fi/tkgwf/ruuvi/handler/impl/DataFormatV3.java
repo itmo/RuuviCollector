@@ -8,20 +8,18 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DataFormatV3 implements BeaconHandler {
+public class DataFormatV3 extends AbstractBeaconHandler implements BeaconHandler {
 
     private final int[] RUUVI_COPANY_IDENTIFIER = {0x99, 0x04}; // 0x0499
-    private final Map<String, Long> updatedMacs;
-    private final long updateLimit = Config.getMeasurementUpdateLimit();
 
     public DataFormatV3() {
-        updatedMacs = new HashMap<>();
+        super();
     }
 
     @Override
     public RuuviMeasurement handle(HCIData hciData) {
         HCIData.Report.AdvertisementData adData = hciData.findAdvertisementDataByType(0xFF);
-        if (adData == null || !shouldUpdate(hciData.mac)) {
+        if (adData == null ) {
             return null;
         }
         byte[] data = adData.dataBytes();
@@ -58,18 +56,11 @@ public class DataFormatV3 implements BeaconHandler {
         int battHi = data[12] & 0xFF;
         int battLo = data[13] & 0xFF;
         m.batteryVoltage = (battHi * 256 + battLo) / 1000d;
+        if(!shouldUpdate(measurement))
+        {
+            return null;
+        }
         return m;
     }
 
-    private boolean shouldUpdate(String mac) {
-        if (!Config.isAllowedMAC(mac)) {
-            return false;
-        }
-        Long lastUpdate = updatedMacs.get(mac);
-        if (lastUpdate == null || lastUpdate + updateLimit < System.currentTimeMillis()) {
-            updatedMacs.put(mac, System.currentTimeMillis());
-            return true;
-        }
-        return false;
-    }
 }

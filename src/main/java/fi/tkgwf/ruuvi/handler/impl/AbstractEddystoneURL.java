@@ -6,8 +6,11 @@ import fi.tkgwf.ruuvi.config.Config;
 import fi.tkgwf.ruuvi.handler.BeaconHandler;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.log4j.Logger;
 
-public abstract class AbstractEddystoneURL implements BeaconHandler {
+
+public abstract class AbstractEddystoneURL extends AbstractBeaconHandler implements BeaconHandler {
+    private static final Logger LOG = Logger.getLogger(AbstractEddystoneURL.class);
 
     private static final String RUUVI_BASE_URL = "ruu.vi/#";
     private final Map<String, Update> updatedMacs;
@@ -22,6 +25,7 @@ public abstract class AbstractEddystoneURL implements BeaconHandler {
 
     @Override
     public RuuviMeasurement handle(HCIData hciData) {
+        LOG.debug("got update");
         HCIData.Report.AdvertisementData adData = hciData.findAdvertisementDataByType(0x16);
         if (adData == null) {
             return null;
@@ -58,8 +62,10 @@ public abstract class AbstractEddystoneURL implements BeaconHandler {
         int pressureLo = data[5] & 0xFF;
         measurement.pressure = (double) pressureHi * 256 + 50000 + pressureLo;
         if( !shouldUpdate(measurement)) {
+            LOG.debug("not sending update to db");
             return null;
         }
+        LOG.debug("sending update to db");
         return measurement;
     }
 
