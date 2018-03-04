@@ -8,27 +8,33 @@ import fi.tkgwf.ruuvi.utils.Utils;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.log4j.Logger;
+
 
 public class DataFormatV5 extends AbstractBeaconHandler implements BeaconHandler {
+    private static final Logger LOG = Logger.getLogger(DataFormatV5.class);
 
     private final int[] RUUVI_COPANY_IDENTIFIER = {0x99, 0x04}; // 0x0499
 
     public DataFormatV5() {
-        updatedMacs = new HashMap<>();
     }
 
     @Override
     public RuuviMeasurement handle(HCIData hciData) {
         HCIData.Report.AdvertisementData adData = hciData.findAdvertisementDataByType(0xFF);
+        //LOG.debug("v5 update");
         if (adData == null ) {
+            //LOG.debug("no ad v5");        
             return null;
         }
         byte[] data = adData.dataBytes();
         if (data.length < 2 || (data[0] & 0xFF) != RUUVI_COPANY_IDENTIFIER[0] || (data[1] & 0xFF) != RUUVI_COPANY_IDENTIFIER[1]) {
+            //LOG.debug("no 2 v5");        
             return null;
         }
         data = Arrays.copyOfRange(data, 2, data.length); // discard the first 2 bytes, the company identifier
         if (data.length < 24 || data[0] != 5) {
+            //LOG.debug("no 3 v5");        
             return null;
         }
         RuuviMeasurement m = new RuuviMeasurement();
@@ -72,8 +78,9 @@ public class DataFormatV5 extends AbstractBeaconHandler implements BeaconHandler
         if (!Utils.isMaxSignedShort(data[16], data[17])) {
             m.measurementSequenceNumber = (data[16] & 0xFF) << 8 | data[17] & 0xFF;
         }
-        if(!shouldUpdate(hciData.mac))
+        if(!shouldUpdate(m))
         {
+            //LOG.debug("shouldnt update v5");        
             return null;
         }
         return m;

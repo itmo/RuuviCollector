@@ -118,15 +118,15 @@ public class RuuviMeasurement {
      * Density of air
      */
     public Double airDensity;
-    public Double[] getAsVector()
+    public double[] getAsVector()
     {
-        return new Double[]{
-                temperature,
-                humidity,
-                pressure,
-                accelerationX,
-                accelerationY,
-                accelerationZ
+        return new double[]{
+                temperature==null?0:temperature,
+                humidity==null?0:humidity,
+                pressure==null?0:pressure,
+                accelerationX==null?0:accelerationX,
+                accelerationY==null?0:accelerationY,
+                accelerationZ==null?0:accelerationZ
             };
     }
     public static int getVectorLength()
